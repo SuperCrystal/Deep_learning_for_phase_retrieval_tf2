@@ -29,13 +29,13 @@ os.chdir(os.getcwd())
 # train_label_list = sorted(glob.glob('E:/00_PhaseRetrieval/PhENN/dataset/train/phase/*.txt'))
 # val_img_list = sorted(glob.glob('E:/00_PhaseRetrieval/PhENN/dataset/validate/intensity/*.mat'))
 # val_label_list = sorted(glob.glob('E:/00_PhaseRetrieval/PhENN/dataset/validate/phase/*.txt'))
-train_img_list = sorted(glob.glob('./dataset/train/intensity/*.mat'))
-train_label_list = sorted(glob.glob('./dataset/train/phase/*.txt'))
-val_img_list = sorted(glob.glob('./dataset/validate/intensity/*.mat'))
-val_label_list = sorted(glob.glob('./dataset/validate/phase/*.txt'))
-ckpt_path = './checkpoints/IRV2-{epoch}.ckpt'
+train_img_list = sorted(glob.glob('../dataset/train/intensity/*.mat'))
+train_label_list = sorted(glob.glob('../dataset/train/phase/*.txt'))
+val_img_list = sorted(glob.glob('../dataset/validate/intensity/*.mat'))
+val_label_list = sorted(glob.glob('../dataset/validate/phase/*.txt'))
+ckpt_path = '../checkpoints/IRV2-{epoch}.ckpt'
 # tb_path = 'E:/00_PhaseRetrieval/PhENN/tensorboard/'
-log_path = './PhENN/log/{}/'
+log_path = '../log/{}/'
 if not os.path.exists(log_path.format(case_num)):
     os.mkdir(log_path.format(case_num))
 
@@ -107,9 +107,11 @@ def train():
     vdataset = tf.data.Dataset.from_tensor_slices((val_img_list, val_label_list))
     vdataset = vdataset.map(parse_function, 3).batch(batch_size)
 
-    # base_model = tf.keras.applications.MobileNetV2
+    ### Mobilenet model
     base_model = MobileNetV3Large(classes=num_label)
     model = base_model
+    ### Vgg model
+    ### InceptionResNetV2 model
     # base_model = tf.keras.applications.VGG16(weights=None, include_top=False, input_shape=(img_size[0],img_size[1],1))
     # base_model = tf.keras.applications.InceptionResNetV2(weights=None, include_top=False, input_shape=(img_size[0],img_size[1],1))
     # x = base_model.output
@@ -117,9 +119,7 @@ def train():
     # x = layers.Dropout(0.2)(x)
     # predictions = layers.Dense(num_label, activation='linear')(x)
     # model = tf.keras.models.Model(inputs=base_model.input, outputs=predictions)
-    # tf.keras.utils.plot_model(base_model,'mb3_model.png',show_shapes=True) # 无法打印？
     logging.info('Model loaded')
-    # print('model loaded')
 
     start_epoch = 0
     # 该函数返回 the full path to the latest checkpoint，是string
@@ -178,7 +178,6 @@ def train():
             train_loss.reset_states()
             val_loss.reset_states()
         model.save_weights(ckpt_path.format(epoch=epoch))
-        # print('------------------ this is the end ------------------')
 
 if __name__ == "__main__":
     train()
