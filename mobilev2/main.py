@@ -11,6 +11,7 @@ from tensorflow.keras.layers import BatchNormalization, Conv2D, ReLU, Conv2DTran
 from scipy.io import loadmat
 import numpy as np
 from mobilev3 import MobileNetV3Large
+from vgg_pr import VGG_PR
 from tensorflow.keras.callbacks import TensorBoard
 import logging
 import cv2
@@ -22,7 +23,7 @@ num_label = 20
 initial_lr = 0.001
 total_epoch = 100
 # 编号
-case_num = 7
+case_num = 8
 
 os.chdir(os.getcwd())
 # train_img_list = sorted(glob.glob('E:/00_PhaseRetrieval/PhENN/dataset/train/intensity/*.mat'))
@@ -33,8 +34,7 @@ train_img_list = sorted(glob.glob('../dataset/train/intensity/*.mat'))
 train_label_list = sorted(glob.glob('../dataset/train/phase/*.txt'))
 val_img_list = sorted(glob.glob('../dataset/validate/intensity/*.mat'))
 val_label_list = sorted(glob.glob('../dataset/validate/phase/*.txt'))
-ckpt_path = '../checkpoints/IRV2-{epoch}.ckpt'
-# tb_path = 'E:/00_PhaseRetrieval/PhENN/tensorboard/'
+ckpt_path = '../checkpoints/VGG-{epoch}.ckpt'
 log_path = '../log/{}/'
 if not os.path.exists(log_path.format(case_num)):
     os.mkdir(log_path.format(case_num))
@@ -98,8 +98,8 @@ def get_bn_vars(collection):
     if moving_mean is not None and moving_variance is not None:
         return moving_mean, moving_variance
     raise ValueError("Unable to find moving mean and variance")
-#########################
 
+#####################
 def train():
     logging.basicConfig(level=logging.INFO)
     tdataset = tf.data.Dataset.from_tensor_slices((train_img_list, train_label_list))
@@ -108,11 +108,16 @@ def train():
     vdataset = vdataset.map(parse_function, 3).batch(batch_size)
 
     ### Mobilenet model
-    base_model = MobileNetV3Large(classes=num_label)
-    model = base_model
+    # base_model = MobileNetV3Large(classes=num_label)
+    # model = base_model
     ### Vgg model
+    model = VGG_PR(num_classes=num_label)
+    # base_model = tf.keras.applications.vgg16.VGG16(weights=None, include_top=False, input_shape=(img_size[0],img_size[1],1))
+    # x = base_model.output
+    # x = layers.GlobalAveragePooling2D()(x)
+    # predictions = layers.Dense(num_label, activation='linear')(x)
+    # model = tf.keras.models.Model(inputs=base_model.input, outputs=predictions)
     ### InceptionResNetV2 model
-    # base_model = tf.keras.applications.VGG16(weights=None, include_top=False, input_shape=(img_size[0],img_size[1],1))
     # base_model = tf.keras.applications.InceptionResNetV2(weights=None, include_top=False, input_shape=(img_size[0],img_size[1],1))
     # x = base_model.output
     # x = layers.GlobalAveragePooling2D()(x)
@@ -141,12 +146,17 @@ def train():
     with writer.as_default():
         for epoch in range(start_epoch, total_epoch):
             print('start training')
+            # tf.keras.backend.set_learning_phase(True)
             try:
                 for batch, data in enumerate(tdataset):
                     images, labels = data
                     with tf.GradientTape() as tape:
                         pred = model(images, training=True)
                         # pred = tf.squeeze(pred)
+                        if len(pred.shape) == 2:
+                            pred = tf.reshape(pred,[batch_size, 1, 1, -1])
+                        # check out shapes
+                        # print("the shape of network output: {}\n the shape of label: {}".format(pred.shape, labels.shape))
                         loss = loss_object(pred, labels)
                     gradients = tape.gradient(loss, model.trainable_variables)
                     optimizer.apply_gradients(zip(gradients, model.trainable_variables))
@@ -154,9 +164,9 @@ def train():
                     if batch % 20 ==0:
                         # result() computes and returns the metric value tensor.
                         logging.info('Epoch: {}, iter: {}, loss:{}'.format(epoch, batch, loss.numpy()))
-                    tf.summary.scalar('train_loss', loss.numpy(), step=epoch*5000+batch)
-                    tf.summary.text('Zernike_coe_pred', tf.as_string(tf.squeeze(pred)), step=epoch*5000+batch)
-                    tf.summary.text('Zernike_coe_gt', tf.as_string(tf.squeeze(labels)), step=epoch*5000+batch)
+                    tf.summary.scalar('train_loss', loss.numpy(), step=epoch*1250+batch)
+                    tf.summary.text('Zernike_coe_pred', tf.as_string(tf.squeeze(pred)), step=epoch*1250+batch)
+                    tf.summary.text('Zernike_coe_gt', tf.as_string(tf.squeeze(labels)), step=epoch*1250+batch)
                     # tf.summary.image('input_intensity', tf.math.log(images), step=epoch*5000+batch, max_outputs=1)
                     writer.flush()
                     train_loss(loss)
@@ -170,6 +180,8 @@ def train():
             for batch, data in enumerate(vdataset):
                 images, labels = data
                 val_pred = model(images, training=False)
+                if len(val_pred.shape) == 2:
+                    val_pred = tf.reshape(val_pred,[batch_size, 1, 1, -1])
                 v_loss = loss_object(val_pred, labels)
                 val_loss(v_loss)
             logging.info('Epoch: {}, average train_loss:{}, val_loss: {}'.format(epoch, train_loss.result(), val_loss.result()))
