@@ -11,54 +11,53 @@ from tensorflow.keras.layers import BatchNormalization, Conv2D, ReLU, Conv2DTran
 from scipy.io import loadmat
 import numpy as np
 from mobilev3 import MobileNetV3Large
-from vgg_pr import VGG_PR
+from vgg_multi_input import VGG_multi
 from tensorflow.keras.callbacks import TensorBoard
 import logging
 import cv2
 
 # 参数配置
 img_size = (299,299)
-batch_size = 8
+batch_size = 4
 num_label = 20
 initial_lr = 0.001
 total_epoch = 100
 repeat_times = 5
+exp_thresh = [0.1e4,0.5e4,3e4]
 # 编号
-case_num = 9
+case_num = 10
 
 os.chdir(os.getcwd())
 
-train_img_list = sorted(glob.glob('../dataset/train/intensity/*.mat'))
+train_img_list_1 = sorted(glob.glob('../dataset/exp_train/intensity_1/*.mat'))
+train_img_list_2 = sorted(glob.glob('../dataset/exp_train/intensity_2/*.mat'))
+train_img_list_3 = sorted(glob.glob('../dataset/exp_train/intensity_3/*.mat'))
 train_label_list = sorted(glob.glob('../dataset/train/phase/*.txt'))
-val_img_list = sorted(glob.glob('../dataset/validate/intensity/*.mat'))
+val_img_list_1 = sorted(glob.glob('../dataset/validate/intensity/*.mat'))
 val_label_list = sorted(glob.glob('../dataset/validate/phase/*.txt'))
-ckpt_path = '../checkpoints/VGG-{epoch}.ckpt'
+ckpt_path = '../checkpoints_multi/VGG_multi-{epoch}.ckpt'
 log_path = '../log/{}/'
 if not os.path.exists(log_path.format(case_num)):
     os.mkdir(log_path.format(case_num))
 
 # read data
 ####################### 利用tf.data高级API进行数据读取 ########################
-def read_img(filename):
-    # print("------------------------{}".format(filename))
-    image_dict = loadmat(filename.decode('utf-8'))
-    # process 1 原图归一化
-    # image_decoded = image_dict['Iz'] /4e-4  # 归一化
-    # image_resized = np.float32(np.expand_dims(image_decoded, axis=-1))
-    ### process 2 过曝图归一化
-    # image_decoded = image_dict['Iz']
-    # image_decoded[image_decoded>2e-4] = 2e-4
-    # image_decoded /= 2e-4
-    # image_resized = np.float32(np.expand_dims(image_decoded, axis=-1))
+def read_img(filename, exp_thresh, suffix):
+    # print(filename)
+    image_dict = loadmat(filename.decode('utf-8'), verify_compressed_data_integrity=False)
     # process 3 降采样，可以提升batch_size
-    exp_thresh = 1e4
-    image_decoded = image_dict['Iz']
+    # exp_thresh = 1e4
+    image_decoded = image_dict['Iz_{}'.format(suffix.decode('utf-8'))]
     image_decoded = cv2.resize(image_decoded, img_size, interpolation=cv2.INTER_AREA)
     image_decoded[image_decoded>exp_thresh] = exp_thresh
     image_decoded /= exp_thresh
     image_resized = np.float32(np.expand_dims(image_decoded, axis=-1))
     # image_resized = tf.convert_to_tensor(image_resized)
     return image_resized
+
+def read_multi_imgs(file1, file2, file3):
+
+    return read_img(file1, 'exp1'), read_img(file2, 'exp2'), read_img(file3, 'exp3')
 
 def read_label(filename):
     label = open(filename).read()
@@ -78,11 +77,14 @@ def read_label(filename):
 # print(read_label('E:/00_PhaseRetrieval/PhENN/dataset/train/phase/image000010.txt'))
 
 # 这个函数将作为map的输入，因此尽管label看似输入后没有用到，但也必须写进来
-def parse_function(image_filename, label_filename):
+def parse_function(image_filename1, image_filename2, image_filename3, label_filename):
     # print('--------------{}-------------------'.format(tf.as_string(image_filename))) # filename变成tensor了？
-    img = tf.numpy_function(read_img, [image_filename], tf.float32)
+    # img1, img2, img3 = tf.numpy_function(read_multi_imgs, [image_filename1, image_filename2, image_filename3], tf.float32)
+    img1 = tf.numpy_function(read_img, [image_filename1, exp_thresh[0], 'exp1'], tf.float32)
+    img2 = tf.numpy_function(read_img, [image_filename2, exp_thresh[1], 'exp2'], tf.float32)
+    img3 = tf.numpy_function(read_img, [image_filename3, exp_thresh[2], 'exp3'], tf.float32)
     label = tf.numpy_function(read_label, [label_filename], tf.float32)
-    return img, label
+    return img1, img2, img3, label
 
 ###### 打印检查滑动平均值
 def get_bn_vars(collection):
@@ -102,9 +104,9 @@ def get_bn_vars(collection):
 def train_step(model, tdataset, epoch, loss_object, train_loss, optimizer, writer):
     try:
         for batch, data in enumerate(tdataset):
-            images, labels = data
+            images_1, images_2, images_3, labels = data
             with tf.GradientTape() as tape:
-                pred = model(images, training=True)
+                pred = model(images_1, images_2, images_3, training=True)
                 # pred = tf.squeeze(pred)
                 if len(pred.shape) == 2:
                     pred = tf.reshape(pred,[-1, 1, 1, num_label])
@@ -137,9 +139,9 @@ def train_step(model, tdataset, epoch, loss_object, train_loss, optimizer, write
 # @tf.function
 def val_step(model, vdataset, epoch, val_loss_object, val_loss):
     for batch, data in enumerate(vdataset):
-        images, labels = data
+        images_1, images_2, images_3, labels = data
         # print("images:{}".format(images))
-        val_pred = model(images, training=True)
+        val_pred = model(images_1, images_2, images_3, training=True)
         if len(val_pred.shape) == 2:
             val_pred = tf.reshape(val_pred,[-1, 1, 1, num_label])
         # print("val pred :{}\nval_label: {}".format(val_pred, labels))
@@ -152,9 +154,10 @@ def val_step(model, vdataset, epoch, val_loss_object, val_loss):
 #####################
 def train():
     logging.basicConfig(level=logging.INFO)
-    tdataset = tf.data.Dataset.from_tensor_slices((train_img_list, train_label_list))
-    tdataset = tdataset.map(parse_function, 3).shuffle(buffer_size=200).batch(batch_size).repeat(repeat_times)
-    vdataset = tf.data.Dataset.from_tensor_slices((val_img_list, val_label_list))
+    tdataset = tf.data.Dataset.from_tensor_slices((train_img_list_1, train_img_list_2, train_img_list_3, train_label_list))
+    tdataset = tdataset.map(parse_function, 3).shuffle(buffer_size=100).batch(batch_size).repeat(repeat_times)
+    vdataset = tf.data.Dataset.from_tensor_slices((train_img_list_1[:2000], train_img_list_2[:2000], train_img_list_3[:2000], train_label_list[:2000]))
+    # vdataset = tf.data.Dataset.from_tensor_slices(([val_img_list_1, val_img_list_2, val_img_list_3], val_label_list))
     # vdataset = tf.data.Dataset.from_tensor_slices((train_img_list[:2000], train_label_list[:2000]))
     vdataset = vdataset.map(parse_function, 3).batch(batch_size)
 
@@ -162,11 +165,11 @@ def train():
     # base_model = MobileNetV3Large(classes=num_label)
     # model = base_model
     ### Vgg model
-    model = VGG_PR(num_classes=num_label)
+    model = VGG_multi(num_classes=num_label)
     ### compling model ###
-    input = tf.keras.layers.Input(shape=(img_size[0],img_size[1],1))
-    output = model(input)
-    model = tf.keras.models.Model(input, output)
+    # input = tf.keras.layers.Input(shape=(img_size[0],img_size[1],1))
+    # output = model(input)
+    # model = tf.keras.models.Model(input, output)
 
     logging.info('Model loaded')
 
