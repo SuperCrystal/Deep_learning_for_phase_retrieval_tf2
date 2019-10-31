@@ -10,7 +10,7 @@ import glob
 from tensorflow.keras.layers import BatchNormalization, Conv2D, ReLU, Conv2DTranspose, add, concatenate
 from scipy.io import loadmat
 import numpy as np
-from mobilev3 import MobileNetV3Large
+# from mobilev3 import MobileNetV3Large
 from vgg_multi_input import VGG_multi
 from tensorflow.keras.callbacks import TensorBoard
 import logging
@@ -25,7 +25,7 @@ total_epoch = 100
 repeat_times = 5
 exp_thresh = [0.1e4,0.5e4,3e4]
 # 编号
-case_num = 10
+case_num = 11
 
 os.chdir(os.getcwd())
 
@@ -33,7 +33,9 @@ train_img_list_1 = sorted(glob.glob('../dataset/exp_train/intensity_1/*.mat'))
 train_img_list_2 = sorted(glob.glob('../dataset/exp_train/intensity_2/*.mat'))
 train_img_list_3 = sorted(glob.glob('../dataset/exp_train/intensity_3/*.mat'))
 train_label_list = sorted(glob.glob('../dataset/train/phase/*.txt'))
-val_img_list_1 = sorted(glob.glob('../dataset/validate/intensity/*.mat'))
+val_img_list_1 = sorted(glob.glob('../dataset/exp_validate/intensity_1/*.mat'))
+val_img_list_2 = sorted(glob.glob('../dataset/exp_validate/intensity_2/*.mat'))
+val_img_list_3 = sorted(glob.glob('../dataset/exp_validate/intensity_3/*.mat'))
 val_label_list = sorted(glob.glob('../dataset/validate/phase/*.txt'))
 ckpt_path = '../checkpoints_multi/VGG_multi-{epoch}.ckpt'
 log_path = '../log/{}/'
@@ -46,17 +48,15 @@ def read_img(filename, exp_thresh, suffix):
     # print(filename)
     image_dict = loadmat(filename.decode('utf-8'), verify_compressed_data_integrity=False)
     # process 3 降采样，可以提升batch_size
-    # exp_thresh = 1e4
     image_decoded = image_dict['Iz_{}'.format(suffix.decode('utf-8'))]
     image_decoded = cv2.resize(image_decoded, img_size, interpolation=cv2.INTER_AREA)
-    image_decoded[image_decoded>exp_thresh] = exp_thresh
-    image_decoded /= exp_thresh
+    # image_decoded[image_decoded>exp_thresh] = exp_thresh # 已经过曝过了这一行是啥玩意儿？？
+    # image_decoded /= exp_thresh # 数据生成的时候已经归一化过一次了啊啊啊！
     image_resized = np.float32(np.expand_dims(image_decoded, axis=-1))
     # image_resized = tf.convert_to_tensor(image_resized)
     return image_resized
 
 def read_multi_imgs(file1, file2, file3):
-
     return read_img(file1, 'exp1'), read_img(file2, 'exp2'), read_img(file3, 'exp3')
 
 def read_label(filename):
@@ -122,9 +122,9 @@ def train_step(model, tdataset, epoch, loss_object, train_loss, optimizer, write
             if batch % 20 ==0:
                 # result() computes and returns the metric value tensor.
                 logging.info('Epoch: {}, iter: {}, loss:{}'.format(epoch, batch, loss.numpy()))
-            tf.summary.scalar('train_loss', loss.numpy(), step=epoch*1250*repeat_times+batch)      # the tdataset has been repeated 5 times..
-            tf.summary.text('Zernike_coe_pred', tf.as_string(tf.squeeze(pred)), step=epoch*1250*repeat_times+batch)
-            tf.summary.text('Zernike_coe_gt', tf.as_string(tf.squeeze(labels)), step=epoch*1250*repeat_times+batch)
+            tf.summary.scalar('train_loss', loss.numpy(), step=epoch*2500*repeat_times+batch)      # the tdataset has been repeated 5 times..
+            tf.summary.text('Zernike_coe_pred', tf.as_string(tf.squeeze(pred)), step=epoch*2500*repeat_times+batch)
+            tf.summary.text('Zernike_coe_gt', tf.as_string(tf.squeeze(labels)), step=epoch*2500*repeat_times+batch)
             # tf.summary.image('input_intensity', tf.math.log(images), step=epoch*5000+batch, max_outputs=1)
             writer.flush()
             train_loss(loss)
@@ -156,9 +156,8 @@ def train():
     logging.basicConfig(level=logging.INFO)
     tdataset = tf.data.Dataset.from_tensor_slices((train_img_list_1, train_img_list_2, train_img_list_3, train_label_list))
     tdataset = tdataset.map(parse_function, 3).shuffle(buffer_size=100).batch(batch_size).repeat(repeat_times)
-    vdataset = tf.data.Dataset.from_tensor_slices((train_img_list_1[:2000], train_img_list_2[:2000], train_img_list_3[:2000], train_label_list[:2000]))
-    # vdataset = tf.data.Dataset.from_tensor_slices(([val_img_list_1, val_img_list_2, val_img_list_3], val_label_list))
-    # vdataset = tf.data.Dataset.from_tensor_slices((train_img_list[:2000], train_label_list[:2000]))
+    # vdataset = tf.data.Dataset.from_tensor_slices((train_img_list_1[:2000], train_img_list_2[:2000], train_img_list_3[:2000], train_label_list[:2000]))
+    vdataset = tf.data.Dataset.from_tensor_slices((val_img_list_1, val_img_list_2, val_img_list_3, val_label_list))
     vdataset = vdataset.map(parse_function, 3).batch(batch_size)
 
     ### Mobilenet model
@@ -184,8 +183,8 @@ def train():
         logging.info('training from scratch since weights no there')
 
     ######## 用自定义loop进行训练 ########
-    loss_object = tf.keras.losses.MeanAbsoluteError()
-    val_loss_object = tf.keras.losses.MeanAbsoluteError()
+    loss_object = tf.keras.losses.MeanSquaredError()
+    val_loss_object = tf.keras.losses.MeanSquaredError()
     optimizer = tf.keras.optimizers.Adam(learning_rate=initial_lr)
     train_loss = tf.metrics.Mean(name='train_loss') # 表示对所有训练损失求平均
     val_loss = tf.metrics.Mean(name='val_loss')
