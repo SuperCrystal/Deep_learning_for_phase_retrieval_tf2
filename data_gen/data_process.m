@@ -1,12 +1,13 @@
 % 本程序根据train中Iz的mat数据，将其处理成过曝数据并保存
 clc,clear;
 
-target_file = 'exp_train';       % 'train' 'validate' 'test'
+source_file = 'test';
+target_file = 'exp_test';       % 'train' 'validate' 'test'
 exp_thresh = [0.1e4 0.5e4 3e4];    % 曝光阈值，该值越小，实验对应的曝光时间越长（相对暗细节更突出）exp_thresh_1 = 0.5e4;
 
-for count=1:10000
+for count=1:100
     current_mat_name=['image' num2str(count,'%06d')];
-    save_name_intensity_mat = ['E:\00_PhaseRetrieval\PhENN\dataset\train\intensity\' current_mat_name '.mat'];
+    save_name_intensity_mat = ['E:\00_PhaseRetrieval\PhENN\dataset\' source_file '\intensity\' current_mat_name '.mat'];
     load(save_name_intensity_mat);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 过曝模拟 %%%%%%%%%%%%%%%%%%%%%%%%%%%%
     Iz_exp1 = Iz;

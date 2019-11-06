@@ -13,7 +13,7 @@ exp_thresh = [0.5e4 1.5e4 2.5e4];    % ÆØ¹âãĞÖµ£¬¸ÃÖµÔ½Ğ¡£¬ÊµÑé¶ÔÓ¦µÄÆØ¹âÊ±¼äÔ½³
 
 % period = 0.5;
 [x,y] =meshgrid(linspace(-image_width/2,image_width/2,image_size));
-target_file = 'validate';       % 'train' 'validate' 'test'
+target_file = 'test';       % 'train' 'validate' 'test'
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 x1=x;
 y1=y;
@@ -33,7 +33,7 @@ for num = 1:max_zer
     zer(1:image_size,1:image_size,num) = zernike (num, r, theta);
 end
 
-for count=1:2000
+for count=1:100
         c_original = rand(1,max_zer)-0.5;
         c = c_original;
         s = 0;
@@ -48,12 +48,12 @@ for count=1:2000
         uz=two_step_prop_ASM(u0,lamda,image_width/(image_size-1),scale_factor*image_width/(image_size-1),z);
         Iz=abs(uz.*conj(uz));
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% ¹ıÆØÄ£Äâ %%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        Iz_exp1 = Iz;
-        Iz_exp2 = Iz;
-        Iz_exp3 = Iz;
-        Iz_exp1(Iz_exp1>exp_thresh(1)) = exp_thresh(1); % Ä£Äâ½×ÌİĞÍ¹ıÆØ
-        Iz_exp2(Iz_exp2>exp_thresh(2)) = exp_thresh(2);
-        Iz_exp3(Iz_exp3>exp_thresh(3)) = exp_thresh(3);
+%         Iz_exp1 = Iz;
+%         Iz_exp2 = Iz;
+%         Iz_exp3 = Iz;
+%         Iz_exp1(Iz_exp1>exp_thresh(1)) = exp_thresh(1); % Ä£Äâ½×ÌİĞÍ¹ıÆØ
+%         Iz_exp2(Iz_exp2>exp_thresh(2)) = exp_thresh(2);
+%         Iz_exp3(Iz_exp3>exp_thresh(3)) = exp_thresh(3);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% ÔëÉùÄ£Äâ %%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %         Iz = imnoise(Iz,'gaussian', 0, 0.01);

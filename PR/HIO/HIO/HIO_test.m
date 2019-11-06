@@ -10,8 +10,11 @@ Amp = 0.2  *lambda;
 k = 2*pi/lambda;
 f = 500;
 z = 500;
-n_iter = 1000;
+n_iter = 200;
 scale_factor = 0.1;    % 两步角谱中的缩放因子
+gt_label_file = 'exp_test';
+predict_file = 'multi-epoch40-experi10';
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 delta1 = image_width/(image_size-1);
 delta2 = scale_factor*image_width/(image_size-1);
 [x,y] =meshgrid(linspace(-image_width/2,image_width/2,image_size));
@@ -24,15 +27,16 @@ y1=y/(image_width/2);
 r1(r1>=1)=0;
 max_zer = 20;  % 用来生成面形的泽尼克项数
 test_case_num = 100;
+c_predicts = load(['E:\00_PhaseRetrieval\PhENN\result\' predict_file '\results.txt']);
 for count=1:test_case_num
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 面形生成 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % c_original = load('E:\00_PhaseRetrieval\PhENN\dataset\train\phase\image000001.txt');
 %     count = 2;
     current_mat_name=['image' num2str(count,'%06d')];
-    c_original = load(['E:\00_PhaseRetrieval\PhENN\dataset\train\phase\' current_mat_name '.txt']);
-    c_predict = load(['E:\00_PhaseRetrieval\PhENN\dataset\predict\phase\' current_mat_name '.txt']);
+    c_original = load(['E:\00_PhaseRetrieval\PhENN\dataset\' gt_label_file '\phase\' current_mat_name '.txt']);
+    c_predict = c_predicts(count,:)-0.5;
 %     c_predict = [0.00647449 -0.30987000  0.19227306  0.39816113 -0.17486398 -0.06265780 -0.48511722  0.12137747  0.307168198 -0.20309292 -0.43538997 -0.37204780  0.10783658  0.29242091  0.10101045 -0.03079385 -0.10563767  0.13146666  0.0565202690  0.10372667 ];
-    c_predict = [0.1 -0.4 0.1922 0.39816113 -0.17486398 zeros(1,15)];%1 泽尼克项偏差小于0.1似乎HIO恢复效果就不错了
+%     c_predict = [0.1 -0.4 0.1922 0.39816113 -0.17486398 zeros(1,15)];%1 泽尼克项偏差小于0.1似乎HIO恢复效果就不错了
     % c_predict = [0.1 -0.2 zeros(1,18)];%2
 %     c_predict = rand(1,20)-0.5;
 
@@ -83,12 +87,12 @@ for count=1:test_case_num
     % figure(3)
     % T_phase = angle(E_plane_output);
     % plot(T_phase(:,image_size))
-    % figure(3),
-    % plot(err)
+    figure(3),
+    plot(err)
     rmse_final(count) = err(n_iter); 
 end
-average_rmse = rmse_final/test_case_num;    % 均值误差
-rmse = 
+average_rmse = rmse_final/test_case_num    % 均值误差
+% rmse = 
 
 function s = zernike_sur(c_original, max_zer, image_size, r1, theta)
 zer = zeros(image_size,image_size,max_zer);

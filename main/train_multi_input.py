@@ -1,7 +1,6 @@
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
 import os
 import matplotlib.pyplot as plt
 from PIL import Image
@@ -12,7 +11,6 @@ from scipy.io import loadmat
 import numpy as np
 # from mobilev3 import MobileNetV3Large
 from vgg_multi_input import VGG_multi
-from tensorflow.keras.callbacks import TensorBoard
 import logging
 import cv2
 
@@ -22,7 +20,7 @@ batch_size = 4
 num_label = 20
 initial_lr = 0.001
 total_epoch = 100
-repeat_times = 5
+repeat_times = 20
 exp_thresh = [0.1e4,0.5e4,3e4]
 # 编号
 case_num = 11
@@ -43,14 +41,14 @@ if not os.path.exists(log_path.format(case_num)):
     os.mkdir(log_path.format(case_num))
 
 # read data
-####################### 利用tf.data高级API进行数据读取 ########################
+####################### 数据读取 ########################
 def read_img(filename, exp_thresh, suffix):
     # print(filename)
     image_dict = loadmat(filename.decode('utf-8'), verify_compressed_data_integrity=False)
     # process 3 降采样，可以提升batch_size
     image_decoded = image_dict['Iz_{}'.format(suffix.decode('utf-8'))]
     image_decoded = cv2.resize(image_decoded, img_size, interpolation=cv2.INTER_AREA)
-    # image_decoded[image_decoded>exp_thresh] = exp_thresh # 已经过曝过了这一行是啥玩意儿？？
+    # image_decoded[image_decoded>exp_thresh] = exp_thresh #
     # image_decoded /= exp_thresh # 数据生成的时候已经归一化过一次了啊啊啊！
     image_resized = np.float32(np.expand_dims(image_decoded, axis=-1))
     # image_resized = tf.convert_to_tensor(image_resized)
@@ -76,7 +74,6 @@ def read_label(filename):
 # plt.show()
 # print(read_label('E:/00_PhaseRetrieval/PhENN/dataset/train/phase/image000010.txt'))
 
-# 这个函数将作为map的输入，因此尽管label看似输入后没有用到，但也必须写进来
 def parse_function(image_filename1, image_filename2, image_filename3, label_filename):
     # print('--------------{}-------------------'.format(tf.as_string(image_filename))) # filename变成tensor了？
     # img1, img2, img3 = tf.numpy_function(read_multi_imgs, [image_filename1, image_filename2, image_filename3], tf.float32)
@@ -88,7 +85,6 @@ def parse_function(image_filename1, image_filename2, image_filename3, label_file
 
 ###### 打印检查滑动平均值
 def get_bn_vars(collection):
-
     moving_mean, moving_variance = None, None
     for var in collection:
         name = var.name.lower()
@@ -141,24 +137,41 @@ def val_step(model, vdataset, epoch, val_loss_object, val_loss):
     for batch, data in enumerate(vdataset):
         images_1, images_2, images_3, labels = data
         # print("images:{}".format(images))
+        val_pred = model(images_1, images_2, images_3, training=False)
+        if len(val_pred.shape) == 2:
+            val_pred = tf.reshape(val_pred,[-1, 1, 1, num_label])
+        # print("val pred :{}\nval_label: {}".format(val_pred, labels))
+
+        v_loss = val_loss_object(val_pred, labels)
+        val_loss(v_loss)
+    # mean, variance = get_bn_vars(model.variables)
+    # print("val mean: {}".format(mean))
+    # print("val variance: {}".format(variance))
+    print(val_loss.result())
+    val_loss.reset_states()
+    for batch, data in enumerate(vdataset):
+        images_1, images_2, images_3, labels = data
+        # print("images:{}".format(images))
         val_pred = model(images_1, images_2, images_3, training=True)
         if len(val_pred.shape) == 2:
             val_pred = tf.reshape(val_pred,[-1, 1, 1, num_label])
         # print("val pred :{}\nval_label: {}".format(val_pred, labels))
-        # mean, variance = get_bn_vars(model.variables)
-        # print("val mean: {}".format(mean))
-        # print("val variance: {}".format(variance))
+
         v_loss = val_loss_object(val_pred, labels)
         val_loss(v_loss)
+    # mean, variance = get_bn_vars(model.variables)
+    # print("val mean: {}".format(mean))
+    # print("val variance: {}".format(variance))
+    print(val_loss.result())
     return val_loss
 #####################
 def train():
     logging.basicConfig(level=logging.INFO)
-    tdataset = tf.data.Dataset.from_tensor_slices((train_img_list_1, train_img_list_2, train_img_list_3, train_label_list))
+    tdataset = tf.data.Dataset.from_tensor_slices((train_img_list_1[:30], train_img_list_2[:30], train_img_list_3[:30], train_label_list[:30]))
     tdataset = tdataset.map(parse_function, 3).shuffle(buffer_size=100).batch(batch_size).repeat(repeat_times)
-    # vdataset = tf.data.Dataset.from_tensor_slices((train_img_list_1[:2000], train_img_list_2[:2000], train_img_list_3[:2000], train_label_list[:2000]))
-    vdataset = tf.data.Dataset.from_tensor_slices((val_img_list_1, val_img_list_2, val_img_list_3, val_label_list))
-    vdataset = vdataset.map(parse_function, 3).batch(batch_size)
+    vdataset = tf.data.Dataset.from_tensor_slices((train_img_list_1[:30], train_img_list_2[:30], train_img_list_3[:30], train_label_list[:30]))
+    # vdataset = tf.data.Dataset.from_tensor_slices((val_img_list_1[:100], val_img_list_2[:100], val_img_list_3[:100], val_label_list[:100]))
+    vdataset = vdataset.map(parse_function, 3).batch(1)
 
     ### Mobilenet model
     # base_model = MobileNetV3Large(classes=num_label)
@@ -190,6 +203,7 @@ def train():
     val_loss = tf.metrics.Mean(name='val_loss')
     writer = tf.summary.create_file_writer(log_path.format(case_num))
 
+    # model.build(input_shape=[(None,299,299,1), (None,299,299,1), (None,299,299,1)])
     with writer.as_default():
         for epoch in range(start_epoch, total_epoch):
             print('start training')

@@ -21,7 +21,7 @@ class ConvBnAct(tf.keras.layers.Layer):
             padding=padding,
             name=name)
         # self.norm = BatchNormalization()
-        self.norm = tf.keras.layers.BatchNormalization(name='BatchNorm')
+        self.norm = tf.keras.layers.BatchNormalization(name='BatchNorm',momentum=0.9)
 
     def call(self, input, training):
         x = self.conv(input)
@@ -135,7 +135,7 @@ class VGG_PR(tf.keras.layers.Layer):
         self.fc2 = tf.keras.layers.Dense(128, activation='relu', name='fc2')
         self.fc3 = tf.keras.layers.Dense(num_classes,activation='linear',name='predictions')
 
-    def call(self, input, training):
+    def call(self, input, training, **kwargs):
         x = self.block1(input,training)
         x = self.block2(x,training)
         x = self.block3(x,training)
@@ -155,7 +155,8 @@ class VGG_multi(tf.keras.Model):
         self.e3 = Encoder("encode3")
         self.vgg_base = VGG_PR(num_classes)
 
-    def call(self, input1, input2, input3, training=False):
+    @tf.function
+    def call(self, input1, input2, input3, training=False, **kwargs):
         x1 = self.e1(input1, training)
         x2 = self.e2(input2, training)
         x3 = self.e3(input3, training)
