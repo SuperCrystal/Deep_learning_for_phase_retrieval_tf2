@@ -14,6 +14,9 @@ n_iter = 200;
 scale_factor = 0.1;    % 两步角谱中的缩放因子
 gt_label_file = 'exp_test';
 predict_file = 'multi-epoch40-experi10';
+max_zer = 20;  % 用来生成面形的泽尼克项数
+test_case_num = 100;
+c_predicts = load(['E:\00_PhaseRetrieval\PhENN\result\' predict_file '\results.txt']);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 delta1 = image_width/(image_size-1);
 delta2 = scale_factor*image_width/(image_size-1);
@@ -25,20 +28,11 @@ x1=x/(image_width/2);
 y1=y/(image_width/2);
 [theta,r1]= cart2pol(x1,y1);
 r1(r1>=1)=0;
-max_zer = 20;  % 用来生成面形的泽尼克项数
-test_case_num = 100;
-c_predicts = load(['E:\00_PhaseRetrieval\PhENN\result\' predict_file '\results.txt']);
 for count=1:test_case_num
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 面形生成 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    % c_original = load('E:\00_PhaseRetrieval\PhENN\dataset\train\phase\image000001.txt');
-%     count = 2;
     current_mat_name=['image' num2str(count,'%06d')];
     c_original = load(['E:\00_PhaseRetrieval\PhENN\dataset\' gt_label_file '\phase\' current_mat_name '.txt']);
     c_predict = c_predicts(count,:)-0.5;
-%     c_predict = [0.00647449 -0.30987000  0.19227306  0.39816113 -0.17486398 -0.06265780 -0.48511722  0.12137747  0.307168198 -0.20309292 -0.43538997 -0.37204780  0.10783658  0.29242091  0.10101045 -0.03079385 -0.10563767  0.13146666  0.0565202690  0.10372667 ];
-%     c_predict = [0.1 -0.4 0.1922 0.39816113 -0.17486398 zeros(1,15)];%1 泽尼克项偏差小于0.1似乎HIO恢复效果就不错了
-    % c_predict = [0.1 -0.2 zeros(1,18)];%2
-%     c_predict = rand(1,20)-0.5;
 
     s = zernike_sur(c_original, max_zer, image_size, r1, theta)*Amp;    % ground truth面形
     s_p = zernike_sur(c_predict, max_zer, image_size, r1, theta)*Amp;   % predict的面形
@@ -56,9 +50,9 @@ for count=1:test_case_num
     img_mask = mask;
     img_mask(mask==1) = phase_total(cyl(x,y,image_width/2)==1);
     phase_total = img_mask;
-    figure(1)
-    imagesc(angle(phase_zer))
-    colorbar;
+%     figure(1)
+%     imagesc(angle(phase_zer))
+%     colorbar;
     %%%%%%%%% 计算理论光强用于迭代恢复，这里表示获得的光强是非常理想的，不过曝，无噪声，无离焦。
     u0 = phase_total;
     uz=two_step_prop_ASM(u0,lambda,delta1,delta2,z);
@@ -76,22 +70,16 @@ for count=1:test_case_num
     temp2 = mask;
     temp2(mask==1) = phase_pred(cyl(x,y,image_width/2)==1);
     phase_pred = temp2;
-    % figure(2)
-    % imagesc(T)
-    % colorbar;
     %%%%%%%%%%%%%%%%%%%%% HIO算法迭代 %%%%%%%%%%%%%%%%%%%%%
     [E_plane_output, err] = hio_func(T,phase_pred,image_width,n_iter,mask,phase_True,phase_len,lambda,delta1,delta2,z);
-    figure(2);
-    imagesc(angle(E_plane_output./phase_len))
-    colorbar
-    % figure(3)
-    % T_phase = angle(E_plane_output);
-    % plot(T_phase(:,image_size))
-    figure(3),
-    plot(err)
+%     figure(2);
+%     imagesc(angle(E_plane_output./phase_len))
+%     colorbar
+%     figure(3),
+%     plot(err)
     rmse_final(count) = err(n_iter); 
 end
-average_rmse = rmse_final/test_case_num    % 均值误差
+average_rmse = sum(rmse_final)/test_case_num    % 均值误差
 % rmse = 
 
 function s = zernike_sur(c_original, max_zer, image_size, r1, theta)

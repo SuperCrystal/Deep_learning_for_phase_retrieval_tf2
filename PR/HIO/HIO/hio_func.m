@@ -41,3 +41,4 @@ E_plane_output = two_step_prop_ASM(E_plane_2,lambda,delta2,delta1,-z);
 % T_phase = angle(E_plane_output);
 % E_plane_output = abs(E_plane_output).*exp(1j.*T_phase);
 E_plane_output(cond1)=0;
+error_OSS = gather(error_OSS);
