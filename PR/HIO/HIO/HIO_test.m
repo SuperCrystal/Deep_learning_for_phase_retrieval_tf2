@@ -1,3 +1,4 @@
+% 处理多曝光的test图像数据集
 clc;
 clear all;
 close all;
@@ -12,8 +13,8 @@ f = 500;
 z = 500;
 n_iter = 200;
 scale_factor = 0.1;    % 两步角谱中的缩放因子
-gt_label_file = 'exp_test';
-predict_file = 'multi-epoch40-experi10';
+gt_label_file = 'noise_test';
+predict_file = 'noise_multi-epoch40+100-experi11';
 max_zer = 20;  % 用来生成面形的泽尼克项数
 test_case_num = 100;
 c_predicts = load(['E:\00_PhaseRetrieval\PhENN\result\' predict_file '\results.txt']);
@@ -30,7 +31,7 @@ y1=y/(image_width/2);
 r1(r1>=1)=0;
 for count=1:test_case_num
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 面形生成 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    current_mat_name=['image' num2str(count,'%06d')];
+    current_mat_name=['image' num2str(count+100,'%06d')];
     c_original = load(['E:\00_PhaseRetrieval\PhENN\dataset\' gt_label_file '\phase\' current_mat_name '.txt']);
     c_predict = c_predicts(count,:)-0.5;
 

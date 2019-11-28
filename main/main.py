@@ -22,9 +22,15 @@ batch_size = 8
 num_label = 20
 initial_lr = 0.001
 total_epoch = 100
-repeat_times = 5
+repeat_times = 1
+total_train = 10000
 # 编号
 case_num = 9
+# gpu设置
+gpus = tf.config.experimental.list_physical_devices('GPU')
+tf.config.experimental.set_virtual_device_configuration(
+            gpus[0],
+            [tf.config.experimental.VirtualDeviceConfiguration(memory_limit=4096)])
 
 os.chdir(os.getcwd())
 
@@ -120,9 +126,9 @@ def train_step(model, tdataset, epoch, loss_object, train_loss, optimizer, write
             if batch % 20 ==0:
                 # result() computes and returns the metric value tensor.
                 logging.info('Epoch: {}, iter: {}, loss:{}'.format(epoch, batch, loss.numpy()))
-            tf.summary.scalar('train_loss', loss.numpy(), step=epoch*1250*repeat_times+batch)      # the tdataset has been repeated 5 times..
-            tf.summary.text('Zernike_coe_pred', tf.as_string(tf.squeeze(pred)), step=epoch*1250*repeat_times+batch)
-            tf.summary.text('Zernike_coe_gt', tf.as_string(tf.squeeze(labels)), step=epoch*1250*repeat_times+batch)
+            tf.summary.scalar('train_loss', loss.numpy(), step=epoch*int(total_train/batch_size)*repeat_times+batch)      # the tdataset has been repeated 5 times..
+            tf.summary.text('Zernike_coe_pred', tf.as_string(tf.squeeze(pred)), step=epoch*int(total_train/batch_size)*repeat_times+batch)
+            tf.summary.text('Zernike_coe_gt', tf.as_string(tf.squeeze(labels)), step=epoch*int(total_train/batch_size)*repeat_times+batch)
             # tf.summary.image('input_intensity', tf.math.log(images), step=epoch*5000+batch, max_outputs=1)
             writer.flush()
             train_loss(loss)
@@ -156,7 +162,7 @@ def train():
     tdataset = tdataset.map(parse_function, 3).shuffle(buffer_size=200).batch(batch_size).repeat(repeat_times)
     vdataset = tf.data.Dataset.from_tensor_slices((val_img_list, val_label_list))
     # vdataset = tf.data.Dataset.from_tensor_slices((train_img_list[:2000], train_label_list[:2000]))
-    vdataset = vdataset.map(parse_function, 3).batch(batch_size)
+    vdataset = vdataset.map(parse_function, 3).batch(1)
 
     ### Mobilenet model
     # base_model = MobileNetV3Large(classes=num_label)
@@ -164,9 +170,9 @@ def train():
     ### Vgg model
     model = VGG_PR(num_classes=num_label)
     ### compling model ###
-    input = tf.keras.layers.Input(shape=(img_size[0],img_size[1],1))
-    output = model(input)
-    model = tf.keras.models.Model(input, output)
+    # input = tf.keras.layers.Input(shape=(img_size[0],img_size[1],1))
+    # output = model(input)
+    # model = tf.keras.models.Model(input, output)
 
     logging.info('Model loaded')
 
@@ -181,8 +187,8 @@ def train():
         logging.info('training from scratch since weights no there')
 
     ######## 用自定义loop进行训练 ########
-    loss_object = tf.keras.losses.MeanAbsoluteError()
-    val_loss_object = tf.keras.losses.MeanAbsoluteError()
+    loss_object = tf.keras.losses.MeanSquaredError()
+    val_loss_object = tf.keras.losses.MeanSquaredError()
     optimizer = tf.keras.optimizers.Adam(learning_rate=initial_lr)
     train_loss = tf.metrics.Mean(name='train_loss') # 表示对所有训练损失求平均
     val_loss = tf.metrics.Mean(name='val_loss')

@@ -18,23 +18,47 @@ import cv2
 img_size = (299,299)
 batch_size = 4
 num_label = 20
-initial_lr = 0.001
+initial_lr = 0.00001
 total_epoch = 100
-repeat_times = 20
+repeat_times = 1
 exp_thresh = [0.1e4,0.5e4,3e4]
+total_train = 20000
 # 编号
-case_num = 11
+case_num = 12
 
 os.chdir(os.getcwd())
 
+# train dataset
 train_img_list_1 = sorted(glob.glob('../dataset/exp_train/intensity_1/*.mat'))
 train_img_list_2 = sorted(glob.glob('../dataset/exp_train/intensity_2/*.mat'))
 train_img_list_3 = sorted(glob.glob('../dataset/exp_train/intensity_3/*.mat'))
 train_label_list = sorted(glob.glob('../dataset/train/phase/*.txt'))
+# noise data
+train_img_list_4 = sorted(glob.glob('../dataset/noise_train/intensity_1/*.mat'))
+train_img_list_5 = sorted(glob.glob('../dataset/noise_train/intensity_2/*.mat'))
+train_img_list_6 = sorted(glob.glob('../dataset/noise_train/intensity_3/*.mat'))
+train_label_list_2 = sorted(glob.glob('../dataset/noise_train/phase/*.txt'))
+# mix original data and noise data
+train_img_list_1.extend(train_img_list_4)
+train_img_list_2.extend(train_img_list_5)
+train_img_list_3.extend(train_img_list_6)
+train_label_list.extend(train_label_list_2)
+# val dataset
 val_img_list_1 = sorted(glob.glob('../dataset/exp_validate/intensity_1/*.mat'))
 val_img_list_2 = sorted(glob.glob('../dataset/exp_validate/intensity_2/*.mat'))
 val_img_list_3 = sorted(glob.glob('../dataset/exp_validate/intensity_3/*.mat'))
 val_label_list = sorted(glob.glob('../dataset/validate/phase/*.txt'))
+# noise data
+val_img_list_4 = sorted(glob.glob('../dataset/noise_validate/intensity_1/*.mat'))
+val_img_list_5 = sorted(glob.glob('../dataset/noise_validate/intensity_2/*.mat'))
+val_img_list_6 = sorted(glob.glob('../dataset/noise_validate/intensity_3/*.mat'))
+val_label_list_2 = sorted(glob.glob('../dataset/noise_validate/phase/*.txt'))
+# mix
+val_img_list_1.extend(val_img_list_4)
+val_img_list_2.extend(val_img_list_5)
+val_img_list_3.extend(val_img_list_6)
+val_label_list.extend(val_label_list_2)
+# checkpoints and logs
 ckpt_path = '../checkpoints_multi/VGG_multi-{epoch}.ckpt'
 log_path = '../log/{}/'
 if not os.path.exists(log_path.format(case_num)):
@@ -118,9 +142,9 @@ def train_step(model, tdataset, epoch, loss_object, train_loss, optimizer, write
             if batch % 20 ==0:
                 # result() computes and returns the metric value tensor.
                 logging.info('Epoch: {}, iter: {}, loss:{}'.format(epoch, batch, loss.numpy()))
-            tf.summary.scalar('train_loss', loss.numpy(), step=epoch*2500*repeat_times+batch)      # the tdataset has been repeated 5 times..
-            tf.summary.text('Zernike_coe_pred', tf.as_string(tf.squeeze(pred)), step=epoch*2500*repeat_times+batch)
-            tf.summary.text('Zernike_coe_gt', tf.as_string(tf.squeeze(labels)), step=epoch*2500*repeat_times+batch)
+            tf.summary.scalar('train_loss', loss.numpy(), step=epoch*int(total_train/batch_size)*repeat_times+batch)      # the tdataset has been repeated 5 times..
+            tf.summary.text('Zernike_coe_pred', tf.as_string(tf.squeeze(pred)), step=epoch*int(total_train/batch_size)*repeat_times+batch)
+            tf.summary.text('Zernike_coe_gt', tf.as_string(tf.squeeze(labels)), step=epoch*int(total_train/batch_size)*repeat_times+batch)
             # tf.summary.image('input_intensity', tf.math.log(images), step=epoch*5000+batch, max_outputs=1)
             writer.flush()
             train_loss(loss)
@@ -137,21 +161,6 @@ def val_step(model, vdataset, epoch, val_loss_object, val_loss):
     for batch, data in enumerate(vdataset):
         images_1, images_2, images_3, labels = data
         # print("images:{}".format(images))
-        val_pred = model(images_1, images_2, images_3, training=False)
-        if len(val_pred.shape) == 2:
-            val_pred = tf.reshape(val_pred,[-1, 1, 1, num_label])
-        # print("val pred :{}\nval_label: {}".format(val_pred, labels))
-
-        v_loss = val_loss_object(val_pred, labels)
-        val_loss(v_loss)
-    # mean, variance = get_bn_vars(model.variables)
-    # print("val mean: {}".format(mean))
-    # print("val variance: {}".format(variance))
-    print(val_loss.result())
-    val_loss.reset_states()
-    for batch, data in enumerate(vdataset):
-        images_1, images_2, images_3, labels = data
-        # print("images:{}".format(images))
         val_pred = model(images_1, images_2, images_3, training=True)
         if len(val_pred.shape) == 2:
             val_pred = tf.reshape(val_pred,[-1, 1, 1, num_label])
@@ -162,15 +171,34 @@ def val_step(model, vdataset, epoch, val_loss_object, val_loss):
     # mean, variance = get_bn_vars(model.variables)
     # print("val mean: {}".format(mean))
     # print("val variance: {}".format(variance))
-    print(val_loss.result())
+    # print(val_loss.result())
+    # val_loss.reset_states()
+    # for batch, data in enumerate(vdataset):
+    #     images_1, images_2, images_3, labels = data
+    #     # print("images:{}".format(images))
+    #     val_pred = model(images_1, images_2, images_3, training=False)
+    #     if len(val_pred.shape) == 2:
+    #         val_pred = tf.reshape(val_pred,[-1, 1, 1, num_label])
+    #     # print("val pred :{}\nval_label: {}".format(val_pred, labels))
+    #
+    #     v_loss = val_loss_object(val_pred, labels)
+    #     val_loss(v_loss)
+    # # mean, variance = get_bn_vars(model.variables)
+    # # print("val mean: {}".format(mean))
+    # # print("val variance: {}".format(variance))
+    # print(val_loss.result())
     return val_loss
+
+# def save_to_log():
+#     os.dir(train_img_list_1[0])
+
 #####################
 def train():
     logging.basicConfig(level=logging.INFO)
-    tdataset = tf.data.Dataset.from_tensor_slices((train_img_list_1[:30], train_img_list_2[:30], train_img_list_3[:30], train_label_list[:30]))
+    tdataset = tf.data.Dataset.from_tensor_slices((train_img_list_1, train_img_list_2, train_img_list_3, train_label_list))
     tdataset = tdataset.map(parse_function, 3).shuffle(buffer_size=100).batch(batch_size).repeat(repeat_times)
-    vdataset = tf.data.Dataset.from_tensor_slices((train_img_list_1[:30], train_img_list_2[:30], train_img_list_3[:30], train_label_list[:30]))
-    # vdataset = tf.data.Dataset.from_tensor_slices((val_img_list_1[:100], val_img_list_2[:100], val_img_list_3[:100], val_label_list[:100]))
+    # vdataset = tf.data.Dataset.from_tensor_slices((train_img_list_1[:30], train_img_list_2[:30], train_img_list_3[:30], train_label_list[:30]))
+    vdataset = tf.data.Dataset.from_tensor_slices((val_img_list_1, val_img_list_2, val_img_list_3, val_label_list))
     vdataset = vdataset.map(parse_function, 3).batch(1)
 
     ### Mobilenet model
