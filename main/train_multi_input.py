@@ -1,3 +1,4 @@
+#coding=utf-8
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
@@ -22,7 +23,7 @@ initial_lr = 0.00001
 total_epoch = 100
 repeat_times = 1
 exp_thresh = [0.1e4,0.5e4,3e4]
-total_train = 20000
+total_train = 10000
 # 编号
 case_num = 12
 
@@ -34,30 +35,30 @@ train_img_list_2 = sorted(glob.glob('../dataset/exp_train/intensity_2/*.mat'))
 train_img_list_3 = sorted(glob.glob('../dataset/exp_train/intensity_3/*.mat'))
 train_label_list = sorted(glob.glob('../dataset/train/phase/*.txt'))
 # noise data
-train_img_list_4 = sorted(glob.glob('../dataset/noise_train/intensity_1/*.mat'))
-train_img_list_5 = sorted(glob.glob('../dataset/noise_train/intensity_2/*.mat'))
-train_img_list_6 = sorted(glob.glob('../dataset/noise_train/intensity_3/*.mat'))
-train_label_list_2 = sorted(glob.glob('../dataset/noise_train/phase/*.txt'))
+# train_img_list_4 = sorted(glob.glob('../dataset/noise_train/intensity_1/*.mat'))
+# train_img_list_5 = sorted(glob.glob('../dataset/noise_train/intensity_2/*.mat'))
+# train_img_list_6 = sorted(glob.glob('../dataset/noise_train/intensity_3/*.mat'))
+# train_label_list_2 = sorted(glob.glob('../dataset/noise_train/phase/*.txt'))
 # mix original data and noise data
-train_img_list_1.extend(train_img_list_4)
-train_img_list_2.extend(train_img_list_5)
-train_img_list_3.extend(train_img_list_6)
-train_label_list.extend(train_label_list_2)
+# train_img_list_1.extend(train_img_list_4)
+# train_img_list_2.extend(train_img_list_5)
+# train_img_list_3.extend(train_img_list_6)
+# train_label_list.extend(train_label_list_2)
 # val dataset
 val_img_list_1 = sorted(glob.glob('../dataset/exp_validate/intensity_1/*.mat'))
 val_img_list_2 = sorted(glob.glob('../dataset/exp_validate/intensity_2/*.mat'))
 val_img_list_3 = sorted(glob.glob('../dataset/exp_validate/intensity_3/*.mat'))
 val_label_list = sorted(glob.glob('../dataset/validate/phase/*.txt'))
 # noise data
-val_img_list_4 = sorted(glob.glob('../dataset/noise_validate/intensity_1/*.mat'))
-val_img_list_5 = sorted(glob.glob('../dataset/noise_validate/intensity_2/*.mat'))
-val_img_list_6 = sorted(glob.glob('../dataset/noise_validate/intensity_3/*.mat'))
-val_label_list_2 = sorted(glob.glob('../dataset/noise_validate/phase/*.txt'))
+# val_img_list_4 = sorted(glob.glob('../dataset/noise_validate/intensity_1/*.mat'))
+# val_img_list_5 = sorted(glob.glob('../dataset/noise_validate/intensity_2/*.mat'))
+# val_img_list_6 = sorted(glob.glob('../dataset/noise_validate/intensity_3/*.mat'))
+# val_label_list_2 = sorted(glob.glob('../dataset/noise_validate/phase/*.txt'))
 # mix
-val_img_list_1.extend(val_img_list_4)
-val_img_list_2.extend(val_img_list_5)
-val_img_list_3.extend(val_img_list_6)
-val_label_list.extend(val_label_list_2)
+# val_img_list_1.extend(val_img_list_4)
+# val_img_list_2.extend(val_img_list_5)
+# val_img_list_3.extend(val_img_list_6)
+# val_label_list.extend(val_label_list_2)
 # checkpoints and logs
 ckpt_path = '../checkpoints_multi/VGG_multi-{epoch}.ckpt'
 log_path = '../log/{}/'
