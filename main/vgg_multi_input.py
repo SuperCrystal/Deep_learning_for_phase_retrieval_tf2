@@ -131,7 +131,12 @@ class VGG_PR(tf.keras.layers.Layer):
         self.block4 = Block_4()
         self.block5 = Block_5()
         self.avg = tf.keras.layers.GlobalAveragePooling2D()
-        self.conv_out = ConvBnAct(filters=num_classes, kernel_size=(1,1), activation='linear', name='predictions')
+        self.conv_out = tf.keras.layers.Conv2D(
+            filters=num_classes,
+            kernel_size=(1,1),
+            activation='linear',
+            padding='same',
+            name='predictions')
         # self.fc1 = tf.keras.layers.Dense(256, activation='relu', name='fc1')
         # self.fc2 = tf.keras.layers.Dense(128, activation='relu', name='fc2')
         # self.fc3 = tf.keras.layers.Dense(num_classes,activation='linear',name='predictions')
