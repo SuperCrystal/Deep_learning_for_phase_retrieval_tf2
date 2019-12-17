@@ -29,9 +29,9 @@ exp_thresh = [0.1e4,0.5e4,3e4]
 
 os.chdir(os.getcwd())
 
-test_img_list = sorted(glob.glob('../dataset/test/intensity/*.mat'))
-test_label_list = sorted(glob.glob('../dataset/test/phase/*.txt'))
-ckpt_path = '../checkpoints/notes/8/VGG-{epoch}.ckpt'.format(epoch=12)
+test_img_list = sorted(glob.glob('../dataset/test/intensity/*.mat'))[:100]
+test_label_list = sorted(glob.glob('../dataset/test/phase/*.txt'))[:100]
+ckpt_path = '../checkpoints/VGG-{epoch}.ckpt'.format(epoch=99)
 result_path = '../result/single/'
 if not os.path.exists(result_path):
     os.mkdir(result_path)

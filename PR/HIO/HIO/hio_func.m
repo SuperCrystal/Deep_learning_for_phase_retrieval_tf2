@@ -8,6 +8,8 @@ phase_init = gpuArray(phase_init );
 %%
 
 phase_init = angle(two_step_prop_ASM(phase_init,lambda,delta1,delta2,z));
+% figure(6),
+% imagesc(angle(phase_init));
 E_plane_2 = T.*exp(1j.*phase_init);
 E_plane_1 = two_step_prop_ASM(E_plane_2,lambda,delta2,delta1,-z);
 EM_mask = size(T,1);
@@ -24,9 +26,13 @@ for t = 1:n_iter
     E_plane_2_new = two_step_prop_ASM(rs,lambda,delta1,delta2,z);
     
     E_plane_2 = T.*exp(1j.*angle(E_plane_2_new));
+%     figure(7),
+%     imagesc(angle(E_plane_2));
     %%
     E_plane_output = two_step_prop_ASM(E_plane_2,lambda,delta2,delta1,-z);
     T_phase = angle(E_plane_output./phase_len);
+%     figure(8),
+%     imagesc(T_phase);
     output_phase = T_phase(EM_mask/2-EM/2:EM_mask/2+EM/2-1,EM_mask/2-EM/2:EM_mask/2+EM/2-1).*cyl(x,y,dim/2);
     % 这里可能有问题，导致和角谱的中心不一致。
     %     output_phase = output_phase - min(min(output_phase));

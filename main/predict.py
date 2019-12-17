@@ -35,12 +35,20 @@ os.chdir(os.getcwd())
 # train_label_list = sorted(glob.glob('../dataset/train/phase/*.txt'))
 # val_img_list_1 = sorted(glob.glob('../dataset/validate/intensity/*.mat'))
 # val_label_list = sorted(glob.glob('../dataset/validate/phase/*.txt'))
-test_img_list_1 = sorted(glob.glob('../dataset/noise_test/intensity_1/*.mat'))
-test_img_list_2 = sorted(glob.glob('../dataset/noise_test/intensity_2/*.mat'))
-test_img_list_3 = sorted(glob.glob('../dataset/noise_test/intensity_3/*.mat'))
-test_label_list = sorted(glob.glob('../dataset/noise_test/phase/*.txt'))
-ckpt_path = '../checkpoints_multi/VGG_multi-{epoch}.ckpt'.format(epoch=99)
-result_path = '../result/noise_multi-epoch40+100-experi11/'
+#无噪声
+test_img_list_1 = sorted(glob.glob('../dataset/exp_test/intensity_1/*.mat'))
+test_img_list_2 = sorted(glob.glob('../dataset/exp_test/intensity_2/*.mat'))
+test_img_list_3 = sorted(glob.glob('../dataset/exp_test/intensity_3/*.mat'))
+test_label_list = sorted(glob.glob('../dataset/exp_test/phase/*.txt'))
+ckpt_path = '../checkpoints_multi/notes/11/VGG_multi-{epoch}.ckpt'.format(epoch=40)
+result_path = '../checkpoints_multi/notes/11/'
+# 加噪声
+# test_img_list_1 = sorted(glob.glob('../dataset/noise_test/intensity_1/*.mat'))
+# test_img_list_2 = sorted(glob.glob('../dataset/noise_test/intensity_2/*.mat'))
+# test_img_list_3 = sorted(glob.glob('../dataset/noise_test/intensity_3/*.mat'))
+# test_label_list = sorted(glob.glob('../dataset/noise_test/phase/*.txt'))
+# ckpt_path = '../checkpoints_multi/VGG_multi-{epoch}.ckpt'.format(epoch=99)
+# result_path = '../result/noise_multi-epoch40+100-experi11/'
 if not os.path.exists(result_path):
     os.mkdir(result_path)
 
