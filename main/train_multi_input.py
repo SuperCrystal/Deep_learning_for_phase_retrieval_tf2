@@ -4,7 +4,7 @@ from tensorflow import keras
 from tensorflow.keras import layers
 import os
 import matplotlib.pyplot as plt
-from PIL import Image
+# from PIL import Image
 from tensorflow.keras.preprocessing import image
 import glob
 from tensorflow.keras.layers import BatchNormalization, Conv2D, ReLU, Conv2DTranspose, add, concatenate
