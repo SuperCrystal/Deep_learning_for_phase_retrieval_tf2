@@ -148,6 +148,8 @@ class VGG_PR(tf.keras.layers.Layer):
         x = self.block4(x,training)
         x = self.block5(x,training)
         x = self.avg(x)
+        x = tf.expand_dims(x, aixs=1)
+        x = tf.expand_dims(x, aixs=1)
         x = self.conv_out(x)
         # x = self.fc1(x)
         # x = self.fc2(x)
